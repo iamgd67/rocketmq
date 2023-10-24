@@ -239,6 +239,11 @@ public class DLedgerController implements Controller {
             () -> this.replicasInfoManager.getSyncStateData(brokerNames, brokerAlivePredicate), false);
     }
 
+    public CompletableFuture<RemotingCommand> getAllSyncStateData(){
+        return this.scheduler.appendEvent("getSyncStateData",
+                () -> this.replicasInfoManager.getSyncStateData(brokerAlivePredicate), false);
+    }
+
     @Override
     public void registerBrokerLifecycleListener(BrokerLifecycleListener listener) {
         this.brokerLifecycleListeners.add(listener);

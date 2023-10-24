@@ -17,6 +17,7 @@
 package org.apache.rocketmq.controller.impl.manager;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -353,7 +354,16 @@ public class ReplicasInfoManager {
         return result;
     }
 
-    public ControllerResult<Void> getSyncStateData(final List<String> brokerNames, final BrokerValidPredicate brokerAlivePredicate) {
+    /**
+     * get for all brokers
+     * @return
+     */
+    public ControllerResult<Void> getSyncStateData(final BrokerValidPredicate brokerAlivePredicate) {
+        Set<String> brokerNames = syncStateSetInfoTable.keySet();
+        return getSyncStateData(brokerNames,brokerAlivePredicate);
+    }
+
+    public ControllerResult<Void> getSyncStateData(final Collection<String> brokerNames, final BrokerValidPredicate brokerAlivePredicate) {
         final ControllerResult<Void> result = new ControllerResult<>();
         final BrokerReplicasInfo brokerReplicasInfo = new BrokerReplicasInfo();
         for (String brokerName : brokerNames) {

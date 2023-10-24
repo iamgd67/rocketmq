@@ -112,6 +112,12 @@ public interface Controller {
     CompletableFuture<RemotingCommand> getSyncStateData(final List<String> brokerNames);
 
     /**
+     * this api is used for metrics
+     * @return
+     */
+    CompletableFuture<RemotingCommand> getAllSyncStateData();
+
+    /**
      * Add broker's lifecycle listener
      * @param listener listener
      */

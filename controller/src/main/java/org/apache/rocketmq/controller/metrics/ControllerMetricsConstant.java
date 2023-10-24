@@ -35,6 +35,7 @@ public class ControllerMetricsConstant {
     public static final String GAUGE_DLEDGER_DISK_USAGE = "dledger_disk_usage";
 
     public static final String GAUGE_ACTIVE_BROKER_NUM = "active_broker_num";
+    public static final String GAUGE_SYNC_BROKER_NUM = "sync_broker_num";
 
     public static final String COUNTER_REQUEST_TOTAL = "request_total";
 
@@ -51,6 +52,7 @@ public class ControllerMetricsConstant {
     public static final String LABEL_CLUSTER_NAME = "cluster";
 
     public static final String LABEL_BROKER_SET = "broker_set";
+    public static final String LABEL_SYNC_TYPE = "sync_type";
 
     public static final String LABEL_REQUEST_TYPE = "request_type";
 

@@ -58,24 +58,10 @@ import org.apache.rocketmq.common.metrics.NopObservableLongGauge;
 import org.apache.rocketmq.controller.ControllerManager;
 import org.apache.rocketmq.logging.org.slf4j.Logger;
 import org.apache.rocketmq.logging.org.slf4j.LoggerFactory;
+import org.apache.rocketmq.remoting.protocol.body.BrokerReplicasInfo;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
-import static org.apache.rocketmq.controller.metrics.ControllerMetricsConstant.AGGREGATION_DELTA;
-import static org.apache.rocketmq.controller.metrics.ControllerMetricsConstant.COUNTER_DLEDGER_OP_TOTAL;
-import static org.apache.rocketmq.controller.metrics.ControllerMetricsConstant.COUNTER_ELECTION_TOTAL;
-import static org.apache.rocketmq.controller.metrics.ControllerMetricsConstant.COUNTER_REQUEST_TOTAL;
-import static org.apache.rocketmq.controller.metrics.ControllerMetricsConstant.GAUGE_ACTIVE_BROKER_NUM;
-import static org.apache.rocketmq.controller.metrics.ControllerMetricsConstant.GAUGE_DLEDGER_DISK_USAGE;
-import static org.apache.rocketmq.controller.metrics.ControllerMetricsConstant.GAUGE_ROLE;
-import static org.apache.rocketmq.controller.metrics.ControllerMetricsConstant.HISTOGRAM_DLEDGER_OP_LATENCY;
-import static org.apache.rocketmq.controller.metrics.ControllerMetricsConstant.HISTOGRAM_REQUEST_LATENCY;
-import static org.apache.rocketmq.controller.metrics.ControllerMetricsConstant.LABEL_ADDRESS;
-import static org.apache.rocketmq.controller.metrics.ControllerMetricsConstant.LABEL_AGGREGATION;
-import static org.apache.rocketmq.controller.metrics.ControllerMetricsConstant.LABEL_BROKER_SET;
-import static org.apache.rocketmq.controller.metrics.ControllerMetricsConstant.LABEL_CLUSTER_NAME;
-import static org.apache.rocketmq.controller.metrics.ControllerMetricsConstant.LABEL_GROUP;
-import static org.apache.rocketmq.controller.metrics.ControllerMetricsConstant.LABEL_PEER_ID;
-import static org.apache.rocketmq.controller.metrics.ControllerMetricsConstant.OPEN_TELEMETRY_METER_NAME;
+import static org.apache.rocketmq.controller.metrics.ControllerMetricsConstant.*;
 
 public class ControllerMetricsManager {
 
@@ -91,6 +77,8 @@ public class ControllerMetricsManager {
     public static ObservableLongGauge dLedgerDiskUsage = new NopObservableLongGauge();
 
     public static ObservableLongGauge activeBrokerNum = new NopObservableLongGauge();
+
+    public static ObservableLongGauge syncReplicaBrokerNum = new NopObservableLongGauge();
 
     public static LongCounter requestTotal = new NopLongCounter();
 
@@ -243,6 +231,34 @@ public class ControllerMetricsManager {
                 }
                 measurement.record(diskUsage, newAttributesBuilder().build());
             });
+
+        syncReplicaBrokerNum = meter.gaugeBuilder(GAUGE_SYNC_BROKER_NUM)
+                .setDescription("in sync and not in sync broker numbers")
+                .ofLongs().buildWithCallback(
+                        measurement -> {
+                            try {
+                                byte[] body = controllerManager.getController().getAllSyncStateData().get().getBody();
+                                BrokerReplicasInfo brokerReplicasInfo = BrokerReplicasInfo.decode(body, BrokerReplicasInfo.class);
+                                brokerReplicasInfo.getReplicasInfoTable().forEach((brokerSet, v) -> {
+                                    measurement.record(v.getInSyncReplicas().size(), newAttributesBuilder()
+                                            .put(LABEL_BROKER_SET, brokerSet)
+                                            .put(LABEL_SYNC_TYPE, "in_sync")
+                                            .build()
+                                    );
+                                });
+
+                                brokerReplicasInfo.getReplicasInfoTable().forEach((brokerSet, v) -> {
+                                    measurement.record(v.getNotInSyncReplicas().size(), newAttributesBuilder()
+                                            .put(LABEL_BROKER_SET, brokerSet)
+                                            .put(LABEL_SYNC_TYPE, "not_in_sync")
+                                            .build()
+                                    );
+                                });
+                            } catch (Exception e) {
+                                logger.warn("get broker sync stat fail", e);
+                            }
+                        }
+                );
 
         activeBrokerNum = meter.gaugeBuilder(GAUGE_ACTIVE_BROKER_NUM)
             .setDescription("now active brokers num")
