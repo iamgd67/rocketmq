@@ -42,6 +42,7 @@ import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.DEFA
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.DEFAULT_STORAGE_TYPE;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_STORAGE_DISPATCH_BEHIND;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_STORAGE_FLUSH_BEHIND;
+import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_STORAGE_MAX_OFFSET;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_STORAGE_MESSAGE_RESERVE_TIME;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_STORAGE_SIZE;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_STORAGE_TOPIC_QUEUE_MAX_OFFSET;
@@ -61,11 +62,12 @@ public class DefaultStoreMetricsManager {
     public static MessageStoreConfig messageStoreConfig;
 
     public static ObservableLongGauge storageSize = new NopObservableLongGauge();
+    public static ObservableLongGauge storageMaxOffset = new NopObservableLongGauge();
     public static ObservableLongGauge flushBehind = new NopObservableLongGauge();
     public static ObservableLongGauge dispatchBehind = new NopObservableLongGauge();
     public static ObservableLongGauge messageReserveTime = new NopObservableLongGauge();
 
-    public static ObservableLongGauge TopicQueueMaxOffset = new NopObservableLongGauge();
+    public static ObservableLongGauge topicQueueMaxOffset = new NopObservableLongGauge();
 
     public static ObservableLongGauge timerEnqueueLag = new NopObservableLongGauge();
     public static ObservableLongGauge timerEnqueueLatency = new NopObservableLongGauge();
@@ -99,6 +101,13 @@ public class DefaultStoreMetricsManager {
                 }
             });
 
+        storageMaxOffset = meter.gaugeBuilder(GAUGE_STORAGE_MAX_OFFSET)
+                .setDescription("broker commit log max offset(maxPhyOffset)")
+                .ofLongs()
+                .buildWithCallback(
+                        measurement -> measurement.record(messageStore.getMaxPhyOffset(),newAttributesBuilder().build())
+                );
+
         flushBehind = meter.gaugeBuilder(GAUGE_STORAGE_FLUSH_BEHIND)
             .setDescription("Broker flush behind bytes")
             .setUnit("bytes")
@@ -123,7 +132,10 @@ public class DefaultStoreMetricsManager {
                 measurement.record(System.currentTimeMillis() - earliestMessageTime, newAttributesBuilder().build());
             });
 
-        TopicQueueMaxOffset = meter.gaugeBuilder(GAUGE_STORAGE_TOPIC_QUEUE_MAX_OFFSET).ofLongs().buildWithCallback(
+        topicQueueMaxOffset = meter.gaugeBuilder(GAUGE_STORAGE_TOPIC_QUEUE_MAX_OFFSET)
+                .setDescription("topic queue offset")
+                .ofLongs()
+                .buildWithCallback(
                 x -> {
                     for (Map.Entry<String, TopicConfig> stringTopicConfigEntry : messageStore.getTopicConfigs().entrySet()) {
                         TopicConfig config = stringTopicConfigEntry.getValue();

@@ -18,6 +18,7 @@ package org.apache.rocketmq.store.metrics;
 
 public class DefaultStoreMetricsConstant {
     public static final String GAUGE_STORAGE_SIZE = "rocketmq_storage_size";
+    public static final String GAUGE_STORAGE_MAX_OFFSET = "rocketmq_storage_max_offset";
     public static final String GAUGE_STORAGE_FLUSH_BEHIND = "rocketmq_storage_flush_behind_bytes";
     public static final String GAUGE_STORAGE_DISPATCH_BEHIND = "rocketmq_storage_dispatch_behind_bytes";
     public static final String GAUGE_STORAGE_MESSAGE_RESERVE_TIME = "rocketmq_storage_message_reserve_time";
