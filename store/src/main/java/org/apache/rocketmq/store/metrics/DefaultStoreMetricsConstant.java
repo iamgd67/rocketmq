@@ -21,6 +21,7 @@ public class DefaultStoreMetricsConstant {
     public static final String GAUGE_STORAGE_FLUSH_BEHIND = "rocketmq_storage_flush_behind_bytes";
     public static final String GAUGE_STORAGE_DISPATCH_BEHIND = "rocketmq_storage_dispatch_behind_bytes";
     public static final String GAUGE_STORAGE_MESSAGE_RESERVE_TIME = "rocketmq_storage_message_reserve_time";
+    public static final String GAUGE_STORAGE_TOPIC_QUEUE_MAX_OFFSET = "rocketmq_storage_topic_queue_max_offset";
 
     public static final String GAUGE_TIMER_ENQUEUE_LAG = "rocketmq_timer_enqueue_lag";
     public static final String GAUGE_TIMER_ENQUEUE_LATENCY = "rocketmq_timer_enqueue_latency";
@@ -36,4 +37,6 @@ public class DefaultStoreMetricsConstant {
     public static final String LABEL_STORAGE_MEDIUM = "storage_medium";
     public static final String DEFAULT_STORAGE_MEDIUM = "disk";
     public static final String LABEL_TOPIC = "topic";
+    public static final String LABEL_QUEUE = "queue";
+    public static final String LABEL_COMMITTED = "committed";
 }
