@@ -26,8 +26,10 @@ import io.opentelemetry.sdk.metrics.InstrumentSelector;
 import io.opentelemetry.sdk.metrics.View;
 import java.io.File;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.rocketmq.common.Pair;
+import org.apache.rocketmq.common.TopicConfig;
 import org.apache.rocketmq.common.metrics.NopLongCounter;
 import org.apache.rocketmq.common.metrics.NopObservableLongGauge;
 import org.apache.rocketmq.store.DefaultMessageStore;
@@ -42,11 +44,14 @@ import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUG
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_STORAGE_FLUSH_BEHIND;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_STORAGE_MESSAGE_RESERVE_TIME;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_STORAGE_SIZE;
+import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_STORAGE_TOPIC_QUEUE_MAX_OFFSET;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_TIMER_DEQUEUE_LAG;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_TIMER_DEQUEUE_LATENCY;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_TIMER_ENQUEUE_LAG;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_TIMER_ENQUEUE_LATENCY;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_TIMING_MESSAGES;
+import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.LABEL_COMMITTED;
+import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.LABEL_QUEUE;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.LABEL_STORAGE_MEDIUM;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.LABEL_STORAGE_TYPE;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.LABEL_TOPIC;
@@ -59,6 +64,8 @@ public class DefaultStoreMetricsManager {
     public static ObservableLongGauge flushBehind = new NopObservableLongGauge();
     public static ObservableLongGauge dispatchBehind = new NopObservableLongGauge();
     public static ObservableLongGauge messageReserveTime = new NopObservableLongGauge();
+
+    public static ObservableLongGauge TopicQueueMaxOffset = new NopObservableLongGauge();
 
     public static ObservableLongGauge timerEnqueueLag = new NopObservableLongGauge();
     public static ObservableLongGauge timerEnqueueLatency = new NopObservableLongGauge();
@@ -115,6 +122,27 @@ public class DefaultStoreMetricsManager {
                 }
                 measurement.record(System.currentTimeMillis() - earliestMessageTime, newAttributesBuilder().build());
             });
+
+        TopicQueueMaxOffset = meter.gaugeBuilder(GAUGE_STORAGE_TOPIC_QUEUE_MAX_OFFSET).ofLongs().buildWithCallback(
+                x -> {
+                    for (Map.Entry<String, TopicConfig> stringTopicConfigEntry : messageStore.getTopicConfigs().entrySet()) {
+                        TopicConfig config = stringTopicConfigEntry.getValue();
+                        String topic = stringTopicConfigEntry.getKey();
+                        int qNum = Math.max(config.getReadQueueNums(), config.getWriteQueueNums());
+                        for (int queueId = 0; queueId < qNum; queueId++) {
+                            for (Boolean committed : new Boolean[]{true, false}) {
+                                long off = messageStore.getMaxOffsetInQueue(topic, queueId, committed);
+                                x.record(off, newAttributesBuilder()
+                                        .put(LABEL_COMMITTED, committed + "")
+                                        .put(LABEL_TOPIC, topic)
+                                        .put(LABEL_QUEUE, queueId + "")
+                                        .build());
+                            }
+                        }
+                    }
+                }
+        );
+
 
         if (messageStore.getMessageStoreConfig().isTimerWheelEnable()) {
             timerEnqueueLag = meter.gaugeBuilder(GAUGE_TIMER_ENQUEUE_LAG)
