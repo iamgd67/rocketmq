@@ -136,24 +136,34 @@ public class DefaultStoreMetricsManager {
                 .setDescription("topic queue offset")
                 .ofLongs()
                 .buildWithCallback(
-                x -> {
-                    for (Map.Entry<String, TopicConfig> stringTopicConfigEntry : messageStore.getTopicConfigs().entrySet()) {
-                        TopicConfig config = stringTopicConfigEntry.getValue();
-                        String topic = stringTopicConfigEntry.getKey();
-                        int qNum = Math.max(config.getReadQueueNums(), config.getWriteQueueNums());
-                        for (int queueId = 0; queueId < qNum; queueId++) {
-                            for (Boolean committed : new Boolean[]{true, false}) {
-                                long off = messageStore.getMaxOffsetInQueue(topic, queueId, committed);
-                                x.record(off, newAttributesBuilder()
-                                        .put(LABEL_COMMITTED, committed + "")
-                                        .put(LABEL_TOPIC, topic)
-                                        .put(LABEL_QUEUE, queueId + "")
-                                        .build());
+                        measurement -> {
+                            for (Map.Entry<String, TopicConfig> stringTopicConfigEntry : messageStore.getTopicConfigs().entrySet()) {
+                                TopicConfig config = stringTopicConfigEntry.getValue();
+                                String topic = stringTopicConfigEntry.getKey();
+                                int qNum = Math.max(config.getReadQueueNums(), config.getWriteQueueNums());
+                                for (Boolean committed : new Boolean[]{true, false}) {
+                                    long total = 0;
+                                    for (int queueId = 0; queueId < qNum; queueId++) {
+                                        long off = messageStore.getMaxOffsetInQueue(topic, queueId, committed);
+                                        total += off;
+                                        //every queue too many metrics, only collect total now, maybe latter set as config
+                                        boolean recordEveryQueue = false;
+                                        if (recordEveryQueue) {
+                                            measurement.record(off, newAttributesBuilder()
+                                                    .put(LABEL_COMMITTED, committed + "")
+                                                    .put(LABEL_TOPIC, topic)
+                                                    .put(LABEL_QUEUE, queueId + "")
+                                                    .build());
+                                        }
+                                    }
+                                    measurement.record(total,newAttributesBuilder().put(LABEL_COMMITTED, committed + "")
+                                            .put(LABEL_TOPIC, topic)
+                                            .put(LABEL_QUEUE, "all")
+                                            .build());
+                                }
                             }
                         }
-                    }
-                }
-        );
+                );
 
 
         if (messageStore.getMessageStoreConfig().isTimerWheelEnable()) {
