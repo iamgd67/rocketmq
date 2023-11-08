@@ -44,8 +44,10 @@ import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUG
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_STORAGE_FLUSH_BEHIND;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_STORAGE_MAX_OFFSET;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_STORAGE_MESSAGE_RESERVE_TIME;
+import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_STORAGE_MIN_OFFSET;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_STORAGE_SIZE;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_STORAGE_TOPIC_QUEUE_MAX_OFFSET;
+import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_STORAGE_TOPIC_QUEUE_MIN_OFFSET;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_TIMER_DEQUEUE_LAG;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_TIMER_DEQUEUE_LATENCY;
 import static org.apache.rocketmq.store.metrics.DefaultStoreMetricsConstant.GAUGE_TIMER_ENQUEUE_LAG;
@@ -63,11 +65,13 @@ public class DefaultStoreMetricsManager {
 
     public static ObservableLongGauge storageSize = new NopObservableLongGauge();
     public static ObservableLongGauge storageMaxOffset = new NopObservableLongGauge();
+    public static ObservableLongGauge storageMinOffset = new NopObservableLongGauge();
     public static ObservableLongGauge flushBehind = new NopObservableLongGauge();
     public static ObservableLongGauge dispatchBehind = new NopObservableLongGauge();
     public static ObservableLongGauge messageReserveTime = new NopObservableLongGauge();
 
     public static ObservableLongGauge topicQueueMaxOffset = new NopObservableLongGauge();
+    public static ObservableLongGauge topicQueueMinOffset = new NopObservableLongGauge();
 
     public static ObservableLongGauge timerEnqueueLag = new NopObservableLongGauge();
     public static ObservableLongGauge timerEnqueueLatency = new NopObservableLongGauge();
@@ -107,6 +111,12 @@ public class DefaultStoreMetricsManager {
                 .buildWithCallback(
                         measurement -> measurement.record(messageStore.getMaxPhyOffset(),newAttributesBuilder().build())
                 );
+        storageMinOffset = meter.gaugeBuilder(GAUGE_STORAGE_MIN_OFFSET)
+                .setDescription("broker commit log min offset(minPhyOffset)")
+                .ofLongs()
+                .buildWithCallback(
+                        measurement -> measurement.record(messageStore.getMinPhyOffset(),newAttributesBuilder().build())
+                );
 
         flushBehind = meter.gaugeBuilder(GAUGE_STORAGE_FLUSH_BEHIND)
             .setDescription("Broker flush behind bytes")
@@ -133,7 +143,7 @@ public class DefaultStoreMetricsManager {
             });
 
         topicQueueMaxOffset = meter.gaugeBuilder(GAUGE_STORAGE_TOPIC_QUEUE_MAX_OFFSET)
-                .setDescription("topic queue offset")
+                .setDescription("topic queue offset max")
                 .ofLongs()
                 .buildWithCallback(
                         measurement -> {
@@ -146,8 +156,9 @@ public class DefaultStoreMetricsManager {
                                     for (int queueId = 0; queueId < qNum; queueId++) {
                                         long off = messageStore.getMaxOffsetInQueue(topic, queueId, committed);
                                         total += off;
-                                        //every queue too many metrics, only collect total now, maybe latter set as config
-                                        boolean recordEveryQueue = false;
+                                        //every queue too many metrics, default only collect total now
+                                        boolean recordEveryQueue = messageStore.getBrokerConfig().isMetricsTopicOffsetEveryQueue();
+
                                         if (recordEveryQueue) {
                                             measurement.record(off, newAttributesBuilder()
                                                     .put(LABEL_COMMITTED, committed + "")
@@ -156,11 +167,43 @@ public class DefaultStoreMetricsManager {
                                                     .build());
                                         }
                                     }
-                                    measurement.record(total,newAttributesBuilder().put(LABEL_COMMITTED, committed + "")
+                                    measurement.record(total,newAttributesBuilder()
+                                            .put(LABEL_COMMITTED, committed + "")
                                             .put(LABEL_TOPIC, topic)
                                             .put(LABEL_QUEUE, "all")
                                             .build());
                                 }
+                            }
+                        }
+                );
+
+        topicQueueMinOffset = meter.gaugeBuilder(GAUGE_STORAGE_TOPIC_QUEUE_MIN_OFFSET)
+                .setDescription("topic queue offset min")
+                .ofLongs()
+                .buildWithCallback(
+                        measurement -> {
+                            for (Map.Entry<String, TopicConfig> stringTopicConfigEntry : messageStore.getTopicConfigs().entrySet()) {
+                                TopicConfig config = stringTopicConfigEntry.getValue();
+                                String topic = stringTopicConfigEntry.getKey();
+                                int qNum = Math.max(config.getReadQueueNums(), config.getWriteQueueNums());
+                                long total = 0;
+                                for (int queueId = 0; queueId < qNum; queueId++) {
+                                    long off = messageStore.getMinOffsetInQueue(topic, queueId);
+                                    total += off;
+                                    //every queue too many metrics, default only collect total now
+                                    boolean recordEveryQueue = messageStore.getBrokerConfig().isMetricsTopicOffsetEveryQueue();
+
+                                    if (recordEveryQueue) {
+                                        measurement.record(off, newAttributesBuilder()
+                                                .put(LABEL_TOPIC, topic)
+                                                .put(LABEL_QUEUE, queueId + "")
+                                                .build());
+                                    }
+                                }
+                                measurement.record(total,newAttributesBuilder()
+                                        .put(LABEL_TOPIC, topic)
+                                        .put(LABEL_QUEUE, "all")
+                                        .build());
                             }
                         }
                 );

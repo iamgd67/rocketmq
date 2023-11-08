@@ -349,6 +349,8 @@ public class BrokerConfig extends BrokerIdentity {
 
     private MetricsExporterType metricsExporterType = MetricsExporterType.DISABLE;
 
+    private boolean metricsTopicOffsetEveryQueue = false;
+
     private String metricsGrpcExporterTarget = "";
     private String metricsGrpcExporterHeader = "";
     private long metricGrpcExporterTimeOutInMills = 3 * 1000;
@@ -1507,6 +1509,14 @@ public class BrokerConfig extends BrokerIdentity {
 
     public void setMetricsExporterType(String metricsExporterType) {
         this.metricsExporterType = MetricsExporterType.valueOf(metricsExporterType);
+    }
+
+    public boolean isMetricsTopicOffsetEveryQueue() {
+        return metricsTopicOffsetEveryQueue;
+    }
+
+    public void setMetricsTopicOffsetEveryQueue(boolean metricsTopicOffsetEveryQueue) {
+        this.metricsTopicOffsetEveryQueue = metricsTopicOffsetEveryQueue;
     }
 
     public String getMetricsGrpcExporterTarget() {
