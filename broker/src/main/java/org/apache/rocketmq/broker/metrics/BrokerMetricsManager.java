@@ -91,6 +91,7 @@ import static org.apache.rocketmq.broker.metrics.BrokerMetricsConstant.LABEL_IS_
 import static org.apache.rocketmq.broker.metrics.BrokerMetricsConstant.LABEL_IS_SYSTEM;
 import static org.apache.rocketmq.broker.metrics.BrokerMetricsConstant.LABEL_LANGUAGE;
 import static org.apache.rocketmq.broker.metrics.BrokerMetricsConstant.LABEL_NODE_ID;
+import static org.apache.rocketmq.broker.metrics.BrokerMetricsConstant.LABEL_NODE_IS_MASTER;
 import static org.apache.rocketmq.broker.metrics.BrokerMetricsConstant.LABEL_NODE_TYPE;
 import static org.apache.rocketmq.broker.metrics.BrokerMetricsConstant.LABEL_PROCESSOR;
 import static org.apache.rocketmq.broker.metrics.BrokerMetricsConstant.LABEL_TOPIC;
@@ -169,6 +170,8 @@ public class BrokerMetricsManager {
         attributesBuilder.put(LABEL_TOPIC, result.topic);
         attributesBuilder.put(LABEL_IS_RETRY, result.isRetry);
         attributesBuilder.put(LABEL_IS_SYSTEM, isSystem(result.topic, result.group));
+        //consumer lag of slave may delay much, need this mark to get real lag
+        attributesBuilder.put(LABEL_NODE_IS_MASTER, brokerConfig.getBrokerId()==0);
         return attributesBuilder.build();
     }
 

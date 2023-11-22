@@ -42,6 +42,7 @@ public class BrokerMetricsConstant {
     public static final String LABEL_NODE_TYPE = "node_type";
     public static final String NODE_TYPE_BROKER = "broker";
     public static final String LABEL_NODE_ID = "node_id";
+    public static final String LABEL_NODE_IS_MASTER="node_is_master";
     public static final String LABEL_AGGREGATION = "aggregation";
     public static final String AGGREGATION_DELTA = "delta";
     public static final String LABEL_PROCESSOR = "processor";
