@@ -63,6 +63,20 @@ public class ConsumerProgressSubCommandTest {
         cmd.execute(commandLine, options, null);
     }
 
+    @Test
+    public void testExecute2() throws SubCommandException {
+        ConsumerProgressSubCommand cmd = new ConsumerProgressSubCommand();
+        Options options = ServerUtil.buildCommandlineOptions(new Options());
+        String[] subargs = new String[] {"-g lite_pull_consumer_test_67",
+                "-n hx-rocketmq-test-1.hx.800best.com:9876;hx-rocketmq-test-2.hx.800best.com:9876;hx-rocketmq-test-3.hx.800best.com:9876"
+                ,"-s","true"
+        };
+        final CommandLine commandLine =
+                ServerUtil.parseCmdLine("mqadmin " + cmd.commandName(), subargs,
+                        cmd.buildCommandlineOptions(options), new DefaultParser());
+        cmd.execute(commandLine, options, null);
+    }
+
     private ServerResponseMocker startOneBroker() {
         ConsumeStats consumeStats = new ConsumeStats();
         HashMap<MessageQueue, OffsetWrapper> offsetTable = new HashMap<>();
